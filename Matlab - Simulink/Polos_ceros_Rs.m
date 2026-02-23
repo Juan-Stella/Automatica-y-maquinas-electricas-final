@@ -95,3 +95,83 @@ Tabla = table( ...
 
 disp(Tabla)
 writetable(Tabla,'Tabla_Polos_Temperatura.xlsx')
+
+%% ---------------------------------------------------------
+%  Variación de parámetros mecánicos: J_eq y b_eq (T_s = 40°C)
+% ---------------------------------------------------------
+
+T_s_fix = 40;                 % [°C] Temperatura fija para este análisis
+T_ref_Rs = 20;                % [°C] Referencia de resistencia (Aleo)
+R_s_fix = R_s_ref*(1 + alpha_Cu*(T_s_fix - T_ref_Rs));
+
+% --- Valores nominales (ya definidos en tu script)
+J_eq_nom = J_eq;
+b_eq_nom = b_eq;
+
+% --- Valores mínimos (ej: m_l = 0 kg, b_l = 0)
+m_l_min = 0;                  % [kg]
+b_l_min = 0;                  % [N*m*s/rad]
+
+J_l_min = (m*l_cm^2 + J_cm) + m_l_min*l_l^2;
+J_eq_min = J_m + J_l_min/r^2;
+
+b_eq_min = b_m + b_l_min/r^2;
+
+% --- Valores máximos (ej: m_l = m_l, b_l = b_l)
+m_l_max = m_l;                % [kg] (tu valor máximo definido)
+b_l_max = b_l;                % [N*m*s/rad] (tu valor máximo definido)
+
+J_l_max = (m*l_cm^2 + J_cm) + m_l_max*l_l^2;
+J_eq_max = J_m + J_l_max/r^2;
+
+b_eq_max = b_m + b_l_max/r^2;
+
+% Guardamos en vectores para iterar
+J_eq_vec = [J_eq_nom, J_eq_min, J_eq_max];
+b_eq_vec = [b_eq_nom, b_eq_min, b_eq_max];
+
+% Resultados
+p1_v = zeros(1,3);
+p2_v = zeros(1,3);
+p3_v = zeros(1,3);
+cero_v = zeros(1,3);
+wn_v = zeros(1,3);
+zeta_v = zeros(1,3);
+
+for k = 1:3
+    J_eq_k = J_eq_vec(k);
+    b_eq_k = b_eq_vec(k);
+
+    A = L_q*b_eq_k + J_eq_k*R_s_fix;
+    B = J_eq_k*L_q;
+    C = R_s_fix*b_eq_k + (3/2)*Pp^2*lambda_m^2;
+
+    Delta = A^2 - 4*B*C;
+
+    p2_v(k) = (-A + sqrt(Delta))/(2*B);
+    p3_v(k) = (-A - sqrt(Delta))/(2*B);
+
+    cero_v(k) = -R_s_fix/L_q;
+
+    wn_v(k) = abs(p2_v(k));
+    zeta_v(k) = -real(p2_v(k))/wn_v(k);
+end
+
+% Etiquetas filas como en el informe
+Condicion = ["Nominal"; "Minimos"; "Maximos"];
+
+Tabla_param = table( ...
+    Condicion, ...
+    J_eq_vec.', ...
+    b_eq_vec.', ...
+    p1_v.', ...
+    p2_v.', ...
+    p3_v.', ...
+    cero_v.', ...
+    wn_v.', ...
+    zeta_v.', ...
+    'VariableNames', ...
+    {'Condicion','J_eq','b_eq','P1','P2','P3','Cero','wn_rad_s','zeta'} );
+
+disp(Tabla_param)
+writetable(Tabla_param,'Tabla_Polos_Jeq_beq.xlsx')
