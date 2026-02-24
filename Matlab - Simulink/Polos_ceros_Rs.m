@@ -10,26 +10,18 @@ ceros = zeros(1,n);
 R_s = zeros(1,n);
 for i = 1:n
     T_s = T_s_interval(i);
-
     R_s(i) = R_s_ref*(1 + alpha_Cu*(T_s - T_s_ref));
-
     A = L_q*b_eq + J_eq*R_s(i);
     B = J_eq*L_q;
     C = R_s(i)*b_eq + (3/2)*Pp^2*lambda_m^2;
-
     Delta = A^2 - 4*B*C;
-
     p2(i) = (-A + sqrt(Delta)) / (2*B);
     p3(i) = (-A - sqrt(Delta)) / (2*B);
-
     ceros(i) = -R_s(i)/L_q;
-
-
- 
 end
 
-wn = abs(p2);                % omega_n
-zeta = -real(p2)./wn;         % amortiguamiento
+wn = abs(p2);              
+zeta = -real(p2)./wn;         
 
 figure
 plot(real(p2), imag(p2), 'rx', 'MarkerSize', 8, 'LineWidth', 1.5); hold on
@@ -41,7 +33,6 @@ quiver(real(p2(1)), imag(p2(1)), ...
        real(p2(end)) - real(p2(1)), ...
        imag(p2(end)) - imag(p2(1)), ...
        0, 'r', 'LineWidth', 1.5)
-
 % Flecha polos s3
 quiver(real(p3(1)), imag(p3(1)), ...
        real(p3(end)) - real(p3(1)), ...
@@ -123,7 +114,7 @@ b_l_max = 0.13;               % [N*m*s/rad]
 
 J_l_max = (m*l_cm^2 + J_cm) + m_l_max*l_l^2;
 J_eq_max = J_m + J_l_max/r^2;
-
+b_eq_max = b_m + b_l_max/r^2;
 N = 10; 
 
 J_eq_sweep = linspace(J_eq_min, J_eq_max, N);
