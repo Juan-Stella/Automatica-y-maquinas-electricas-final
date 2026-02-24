@@ -100,78 +100,108 @@ writetable(Tabla,'Tabla_Polos_Temperatura.xlsx')
 %  Variación de parámetros mecánicos: J_eq y b_eq (T_s = 40°C)
 % ---------------------------------------------------------
 
-T_s_fix = 40;                 % [°C] Temperatura fija para este análisis
-T_ref_Rs = 20;                % [°C] Referencia de resistencia (Aleo)
+T_s_fix = 40;                
+T_ref_Rs = 20;                
 R_s_fix = R_s_ref*(1 + alpha_Cu*(T_s_fix - T_ref_Rs));
 
 % --- Valores nominales (ya definidos en tu script)
 J_eq_nom = J_eq;
 b_eq_nom = b_eq;
 
-% --- Valores mínimos (ej: m_l = 0 kg, b_l = 0)
+% --- Valores mínimos
 m_l_min = 0;                  % [kg]
-b_l_min = 0;                  % [N*m*s/rad]
+b_l_min = 0.07;               % [N*m*s/rad]
 
 J_l_min = (m*l_cm^2 + J_cm) + m_l_min*l_l^2;
 J_eq_min = J_m + J_l_min/r^2;
 
 b_eq_min = b_m + b_l_min/r^2;
 
-% --- Valores máximos (ej: m_l = m_l, b_l = b_l)
-m_l_max = m_l;                % [kg] (tu valor máximo definido)
-b_l_max = b_l;                % [N*m*s/rad] (tu valor máximo definido)
+% --- Valores máximo
+m_l_max = 1.5;                % [kg] 
+b_l_max = 0.13;               % [N*m*s/rad] 
 
 J_l_max = (m*l_cm^2 + J_cm) + m_l_max*l_l^2;
 J_eq_max = J_m + J_l_max/r^2;
 
-b_eq_max = b_m + b_l_max/r^2;
+N = 10; 
 
-% Guardamos en vectores para iterar
-J_eq_vec = [J_eq_nom, J_eq_min, J_eq_max];
-b_eq_vec = [b_eq_nom, b_eq_min, b_eq_max];
+J_eq_sweep = linspace(J_eq_min, J_eq_max, N);
+b_eq_sweep = linspace(b_eq_min, b_eq_max, N);
+
+p1_s = zeros(1,N);
+p2_s = zeros(1,N);
+p3_s = zeros(1,N);
+cero_s = zeros(1,N);
+wn_s = zeros(1,N);
+zeta_s = zeros(1,N);
 
 % Resultados
-p1_v = zeros(1,3);
-p2_v = zeros(1,3);
-p3_v = zeros(1,3);
-cero_v = zeros(1,3);
-wn_v = zeros(1,3);
-zeta_v = zeros(1,3);
+p1_v = zeros(1,N);
+p2_v = zeros(1,N);
+p3_v = zeros(1,N);
+cero_v = zeros(1,N);
+wn_v = zeros(1,N);
+zeta_v = zeros(1,N);
 
-for k = 1:3
-    J_eq_k = J_eq_vec(k);
-    b_eq_k = b_eq_vec(k);
+for k = 1:N
+    Jk = J_eq_sweep(k);
+    bk = b_eq_sweep(k);
 
-    A = L_q*b_eq_k + J_eq_k*R_s_fix;
-    B = J_eq_k*L_q;
-    C = R_s_fix*b_eq_k + (3/2)*Pp^2*lambda_m^2;
+    A = L_q*bk + Jk*R_s_fix;
+    B = Jk*L_q;
+    C = R_s_fix*bk + (3/2)*Pp^2*lambda_m^2;
 
     Delta = A^2 - 4*B*C;
 
-    p2_v(k) = (-A + sqrt(Delta))/(2*B);
-    p3_v(k) = (-A - sqrt(Delta))/(2*B);
+    p2_s(k) = (-A + sqrt(Delta))/(2*B);
+    p3_s(k) = (-A - sqrt(Delta))/(2*B);
 
-    cero_v(k) = -R_s_fix/L_q;
+    cero_s(k) = -R_s_fix/L_q;
 
-    wn_v(k) = abs(p2_v(k));
-    zeta_v(k) = -real(p2_v(k))/wn_v(k);
+    wn_s(k) = abs(p2_s(k));
+    zeta_s(k) = -real(p2_s(k))/wn_s(k);
 end
 
-% Etiquetas filas como en el informe
-Condicion = ["Nominal"; "Minimos"; "Maximos"];
+% Export tabla del barrido (esto sí te da "muchos puntos")
+Tabla_param_sweep = table( ...
+    J_eq_sweep.', ...
+    b_eq_sweep.', ...
+    p1_s.', ...
+    p2_s.', ...
+    p3_s.', ...
+    cero_s.', ...
+    wn_s.', ...
+    zeta_s.', ...
+    'VariableNames', {'J_eq','b_eq','P1','P2','P3','Cero','wn_rad_s','zeta'} );
 
-Tabla_param = table( ...
-    Condicion, ...
-    J_eq_vec.', ...
-    b_eq_vec.', ...
-    p1_v.', ...
-    p2_v.', ...
-    p3_v.', ...
-    cero_v.', ...
-    wn_v.', ...
-    zeta_v.', ...
-    'VariableNames', ...
-    {'Condicion','J_eq','b_eq','P1','P2','P3','Cero','wn_rad_s','zeta'} );
+writetable(Tabla_param_sweep,'Tabla_Sweep_Jeq_beq.xlsx');
 
-disp(Tabla_param)
-writetable(Tabla_param,'Tabla_Polos_Jeq_beq.xlsx')
+% ---------------- Figura ----------------
+figure
+plot(real(p1_s), imag(p1_s), 'mx', 'MarkerSize', 8, 'LineWidth', 1.5); hold on
+plot(real(p2_s), imag(p2_s), 'rx', 'MarkerSize', 8, 'LineWidth', 1.5)
+plot(real(p3_s), imag(p3_s), 'bx', 'MarkerSize', 8, 'LineWidth', 1.5)
+plot(real(cero_s), imag(cero_s), 'ko', 'MarkerSize', 8, 'LineWidth', 1.5)
+
+% Flechas al costado (sin superponer)
+xoff2 = max(real(p2_s)) + 10; % desplazamiento a la derecha (ajustable)
+y2a = imag(p2_s(1));
+y2b = imag(p2_s(end));
+quiver(xoff2, y2a, 0, (y2b - y2a), 0, 'k', 'LineWidth', 1.5, 'MaxHeadSize', 0.7)
+text(xoff2+2, (y2a+y2b)/2, 'De J_{eq} y b_{eq} mínimo a máximo', ...
+    'HorizontalAlignment','left', 'VerticalAlignment','middle')
+
+xoff3 = max(real(p3_s)) + 10;
+y3a = imag(p3_s(1));
+y3b = imag(p3_s(end));
+quiver(xoff3, y3a, 0, (y3b - y3a), 0, 'k', 'LineWidth', 1.5, 'MaxHeadSize', 0.7)
+text(xoff3+2, (y3a+y3b)/2, 'De J_{eq} y b_{eq} mínimo a máximo', ...
+    'HorizontalAlignment','left', 'VerticalAlignment','middle')
+
+grid on
+xlabel('Parte Real')
+ylabel('Parte Imaginaria')
+title('Ubicación de Polos y Ceros en el Plano Complejo')
+legend('Polos s1','Polos s2','Polos s3','Cero','Location','best')
+axis equal
