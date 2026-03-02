@@ -1,6 +1,6 @@
 clc
 Ts_NL_saved;
-Ts_LTI_saved;
+Ts_LTI_saved = out.Ts_LTI;
 % --- Definir intervalo común ---
 t0 = max(Ts_NL_saved.Time(1), Ts_LTI_saved.Time(1));
 tf = min(Ts_NL_saved.Time(end), Ts_LTI_saved.Time(end));
@@ -31,8 +31,8 @@ figure
 subplot(2,1,1)
 plot(t, e_theta, 'k', 'LineWidth', 1.2)
 grid on
-ylabel('e_{\theta_m} [rad]')
-title('(a) Comparación Ts_LTI_saved vs NL - \theta_m')
+ylabel('e_{T_s} [°C]')
+title('(a) Comparación T_s LTI vs NL')
 legend('e(t)','Location','best')
 xlim([t(1) t(end)])
 
@@ -42,7 +42,7 @@ plot(t, theta_NL, 'b', 'LineWidth', 1.2); hold on
 plot(t, theta_Ts_LTI_saved_i, 'r--', 'LineWidth', 1.2)
 grid on
 xlabel('Tiempo (s)')
-ylabel('\theta_m [rad]')
-title('(b) Respuesta \theta_m')
-legend('NL','Ts_LTI_saved','Location','best')
+ylabel('T_s [°C]')
+title('(b) Respuesta T_s')
+legend('T_s NL','T_s LTI','Location','best')
 xlim([t(1) t(end)])

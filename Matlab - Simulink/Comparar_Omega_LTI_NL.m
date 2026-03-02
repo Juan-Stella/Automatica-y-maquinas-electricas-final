@@ -31,8 +31,8 @@ figure
 subplot(2,1,1)
 plot(t, e_theta, 'k', 'LineWidth', 1.2)
 grid on
-ylabel('e_{\theta_m} [rad]')
-title('(a) Comparación omega_LTI_saved vs NL - \theta_m')
+ylabel('e_{\omega_m} [rad/s]')
+title('(a) Comparación \omega_m LTI vs NL ')
 legend('e(t)','Location','best')
 xlim([t(1) t(end)])
 
@@ -42,7 +42,7 @@ plot(t, theta_NL, 'b', 'LineWidth', 1.2); hold on
 plot(t, theta_omega_LTI_saved_i, 'r--', 'LineWidth', 1.2)
 grid on
 xlabel('Tiempo (s)')
-ylabel('\theta_m [rad]')
-title('(b) Respuesta \theta_m')
-legend('NL','omega_LTI_saved','Location','best')
+ylabel('\omega_m [rad/s]')
+title('(b) Respuesta \omega_m')
+legend('\omega_m NL','\omega_m LTI','Location','best')
 xlim([t(1) t(end)])
