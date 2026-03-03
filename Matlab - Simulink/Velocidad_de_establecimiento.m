@@ -1,81 +1,117 @@
 clc
-omega_NL_saved; iqs_NL_saved;
+
+% ===== Señales (timeseries) =====
+omega_NL_saved;
+iqs_NL_saved;
 
 t  = omega_NL_saved.Time;
 w  = omega_NL_saved.Data(:,1);
 iq = iqs_NL_saved.Data(:,1);
 
+% ===== Recorte 0–2 s =====
 idx = (t>=0 & t<=2);
 t=t(idx); w=w(idx); iq=iq(idx);
 
-eventos = [0.1 0.3 0.5 0.7 0.9 1.1 1.3 1.5 1.7 1.9];  % ordenados
+% ===== Eventos (como Aleo en tabla) =====
+eventos = [0.1 0.3 0.5 0.7 0.9 1.1 1.5 1.7 1.9];
 
-settle_pct = 0.01;  % ±1%
-dt_pre = 0.01; dt_fin = 0.02;
+% ===== Parámetros =====
+settle_pct = 0.01;   % ±1%
+dt0 = 0.01;
+dtf = 0.02;
 
-% umbral solo para overshoot (%)
-Dymin_w  = 1.0;     % rad/s
-Dymin_iq = 0.05;    % A
+% ===== Tablas =====
+tabla_w  = calcTablaAleo(t,w,  eventos, settle_pct, dt0, dtf, 1.0);
+tabla_iq = calcTablaAleo(t,iq, eventos, settle_pct, dt0, dtf, 0.05);
 
-tabla_omega = tablaIdx(t,w, eventoss(eventos),settle_pct,dt_pre,dt_fin,Dymin_w);
-tabla_iqs   = tablaIdx(t,iq,eventoss(eventos),settle_pct,dt_pre,dt_fin,Dymin_iq);
+tabla_w.Properties.VariableNames  = {'Perturbacion_s','RiseTimeFallTime_ms','SettlingTime_ms','OvershootUndershoot_pct','ValorEstablecimiento_rad_s'};
+tabla_iq.Properties.VariableNames = {'Perturbacion_s','RiseTimeFallTime_ms','SettlingTime_ms','OvershootUndershoot_pct','ValorEstablecimiento_A'};
 
-tabla_omega.Properties.VariableNames = {'Perturbacion_s','RiseFall_ms','Settling_ms','OverUnder_pct','ValorEstab'};
-tabla_iqs.Properties.VariableNames   = {'Perturbacion_s','RiseFall_ms','Settling_ms','OverUnder_pct','ValorEstab'};
+disp('=== Resultados para velocidad (omega_m) ==='); disp(tabla_w)
+disp('=== Resultados para corriente (i_qs) ===');    disp(tabla_iq)
 
-writetable(tabla_omega,'Resultados_transitorios.xlsx','Sheet','Velocidad');
-writetable(tabla_iqs,'Resultados_transitorios.xlsx','Sheet','Corriente');
+% ===== Export =====
+archivo = 'Resultados_Aleo.xlsx';
+writetable(tabla_w,  archivo, 'Sheet','Velocidad');
+writetable(tabla_iq, archivo, 'Sheet','Corriente');
 
-% ===== FUNCIONES =====
-function e = eventoss(e), e = sort(e); end
+% ==========================================================
+function T = calcTablaAleo(t,y,eventos,settle_pct,dt0,dtf,Dymin)
 
-function T = tablaIdx(t,y,eventos,settle_pct,dt_pre,dt_fin,Dymin)
-n=length(eventos);
-Rise_ms=zeros(n,1); Settle_ms=zeros(n,1); OS_pct=zeros(n,1); Yf=zeros(n,1);
+n = numel(eventos);
+Rise_ms   = nan(n,1);
+Settle_ms = nan(n,1);
+OS_pct    = nan(n,1);
+Yf        = nan(n,1);
 
 for k=1:n
-    t0=eventos(k);
-    if k<n, t1=eventos(k+1); else, t1=t(end); end
+    t0 = eventos(k);
+    if k<n, t1 = eventos(k+1); else, t1 = t(end); end
 
-    idxw = (t>=t0 & t<=t1);
-    tt = t(idxw); yy = y(idxw);
+    idxw = (t>=t0) & (t<=t1);
+    tt = t(idxw);
+    yy = y(idxw);
+    if numel(tt)<3, continue, end
 
-    y0 = mean(y(t>=t0-dt_pre & t<t0));
-    yf = mean(y(t>=t1-dt_fin & t<=t1)); Yf(k)=yf;
+    idx0 = (t >= (t0-dt0)) & (t < t0);
+    idxf = (t > (t1-dtf)) & (t <= t1);
+    if ~any(idx0) || ~any(idxf), continue, end
+
+    y0 = mean(y(idx0));
+    yf = mean(y(idxf));
     Dy = yf - y0;
 
-    % ---- Rise/Fall 10-90 (si no alcanza, usar ventana completa) ----
-    y10 = y0 + 0.1*Dy;  y90 = y0 + 0.9*Dy;
+    % Rise 10–90
+    y10 = y0 + 0.1*Dy;
+    y90 = y0 + 0.9*Dy;
+
     if Dy >= 0
-        i10=find(yy>=y10,1,'first'); i90=find(yy>=y90,1,'first');
+        i10 = find(yy >= y10, 1, 'first');
+        i90 = find(yy >= y90, 1, 'first');
     else
-        i10=find(yy<=y90,1,'first'); i90=find(yy<=y10,1,'first');
-    end
-    if isempty(i10) || isempty(i90)
-        Rise_ms(k) = (t1-t0)*1000;   % no llegó dentro de la ventana
-    else
-        Rise_ms(k) = abs(tt(i90)-tt(i10))*1000;
+        i10 = find(yy <= y90, 1, 'first');
+        i90 = find(yy <= y10, 1, 'first');
     end
 
-    % ---- Settling ±1% (si no asienta, usar ventana completa) ----
-    band = settle_pct*max(abs(Dy),Dymin);   % banda mínima
+    if isempty(i10) || isempty(i90) || i90==i10
+        Rise_ms(k) = (t1 - t0)*1000;
+    else
+        Rise_ms(k) = abs(tt(i90) - tt(i10))*1000;
+    end
+
+    % Settling ±1%
+    band = settle_pct * max(abs(Dy), Dymin);
     err = abs(yy - yf);
-    Settle_ms(k) = (t1-t0)*1000;            % por defecto: no asentó
-    for i=1:length(tt)
-        if all(err(i:end)<=band)
-            Settle_ms(k) = (tt(i)-t0)*1000;
+
+    Settle_ms(k) = (t1 - t0)*1000;
+    for i=1:numel(tt)
+        if all(err(i:end) <= band)
+            Settle_ms(k) = (tt(i) - t0)*1000;
             break
         end
     end
 
-    % ---- Over/Under (%) (si Dy chico, 0%) ----
+    % Overshoot/Undershoot %
     if abs(Dy) < Dymin
         OS_pct(k) = 0;
     else
-        if Dy > 0, OS_pct(k)=max(0,(max(yy)-yf)/abs(Dy))*100;
-        else,      OS_pct(k)=max(0,(yf-min(yy))/abs(Dy))*100; end
+        if Dy > 0
+            OS_pct(k) = max(0,(max(yy)-yf)/abs(Dy))*100;
+        else
+            OS_pct(k) = max(0,(yf-min(yy))/abs(Dy))*100;
+        end
     end
+
+    Yf(k) = yf;
 end
 
-T = table(eventos(:),Rise_ms,Settle_ms,OS_pct,Yf);
+% ===== REDONDEO Y FORMATO FIJO 4 DECIMALES =====
+Rise_ms   = string(compose("%.4f", Rise_ms));
+Settle_ms = string(compose("%.4f", Settle_ms));
+OS_pct    = string(compose("%.4f", OS_pct));
+Yf        = string(compose("%.4f", Yf));
+
+eventos_str = string(compose("%.4f", eventos(:)));
+
+T = table(eventos_str, Rise_ms, Settle_ms, OS_pct, Yf);
 end
