@@ -1,89 +1,68 @@
 clc
 
-%% ---------------------------------------------------------
-%  CUADRO: Comparación de wn y zeta bajo diferentes condiciones
-% ---------------------------------------------------------
+% ===== DATOS =====
+omega_NL_saved; iqs_NL_saved;
+t = omega_NL_saved.Time;
+omega = omega_NL_saved.Data(:,1);
+iqs   = iqs_NL_saved.Data(:,1);
 
-% === Resistencias a 40°C y 115°C ===
-T_ref_Rs = 20;
+% Recorte 0–2 s
+idx = (t>=0 & t<=2);
+t = t(idx); omega = omega(idx); iqs = iqs(idx);
 
-R_s_40  = R_s_ref*(1 + alpha_Cu*(40  - T_ref_Rs));
-R_s_115 = R_s_ref*(1 + alpha_Cu*(115 - T_ref_Rs));
+% ===== EVENTOS =====
+eventos = [0.1 0.3 0.5 0.7 0.9 1.1 1.3 1.5 1.7 1.9];
 
-% === J_eq y b_eq nominales ===
-J_eq_nom = J_eq;
-b_eq_nom = b_eq;
+% ===== PARAMETROS =====
+settle_pct = 0.01; rise_low=0.1; rise_high=0.9; dt_pre=0.01; dt_fin=0.02;
 
-% === J_eq y b_eq mínimos ===
-m_l_min = 0;                  % [kg]
-b_l_min = 0.07;               % [N*m*s/rad]
+% ===== TABLAS (se crean ACÁ) =====
+tabla_omega = calcTabla(t, omega, eventos, settle_pct, rise_low, rise_high, dt_pre, dt_fin);
+tabla_iqs   = calcTabla(t, iqs,   eventos, settle_pct, rise_low, rise_high, dt_pre, dt_fin);
 
-J_l_min  = (m*l_cm^2 + J_cm) + m_l_min*l_l^2;
-J_eq_min = J_m + J_l_min/r^2;
-b_eq_min = b_m + b_l_min/r^2;
+% Renombrar columnas como Aleo
+tabla_omega.Properties.VariableNames = {'Perturbacion_s','RiseTimeFallTime_ms','SettlingTime_ms','OverUnder_pct','ValorEstablecimiento'};
+tabla_iqs.Properties.VariableNames   = {'Perturbacion_s','RiseTimeFallTime_ms','SettlingTime_ms','OverUnder_pct','ValorEstablecimiento'};
 
-% === J_eq y b_eq máximos ===
-m_l_max = 1.5;                % [kg]
-b_l_max = 0.13;               % [N*m*s/rad]
+% Mostrar
+disp('=== Resultados para velocidad (omega_m) ==='); disp(tabla_omega)
+disp('=== Resultados para corriente (i_qs) ===');    disp(tabla_iqs)
 
-J_l_max  = (m*l_cm^2 + J_cm) + m_l_max*l_l^2;
-J_eq_max = J_m + J_l_max/r^2;
-b_eq_max = b_m + b_l_max/r^2;
+% Export a Excel (tu estilo)
+writetable(tabla_omega,'Resultados_velocidad.xlsx');
+writetable(tabla_iqs,'Resultados_corriente.xlsx');
 
-% === Armar condiciones (6 filas) ===
-Condicion = strings(6,1);
-wn_val    = zeros(6,1);
-zeta_val  = zeros(6,1);
+% =======================
+%        FUNCION
+% =======================
+function T = calcTabla(t,y,eventos,settle_pct,rise_low,rise_high,dt_pre,dt_fin)
 
-% ---- 1) Manteniendo valores equivalentes nominales ----
-i = 1;
-R_s = R_s_40;  J_eq = J_eq_nom;  b_eq = b_eq_nom;
-Condicion(i) = "R_s = " + string(R_s) + " (40°C)";
-wn_val(i)   = sqrt( (R_s*b_eq + (3/2)*Pp^2*(lambda_m^2)) / (J_eq*L_q) );
-zeta_val(i) = (L_q*b_eq + R_s*J_eq) / (2*J_eq*L_q*wn_val(i));
+n = length(eventos);
+Rise_ms=nan(n,1); Settle_ms=nan(n,1); OS_pct=nan(n,1); Yf=nan(n,1);
 
-i = 2;
-R_s = R_s_115; J_eq = J_eq_nom;  b_eq = b_eq_nom;
-Condicion(i) = "R_s = " + string(R_s) + " (115°C)";
-wn_val(i)   = sqrt( (R_s*b_eq + (3/2)*Pp^2*(lambda_m^2)) / (J_eq*L_q) );
-zeta_val(i) = (L_q*b_eq + R_s*J_eq) / (2*J_eq*L_q*wn_val(i));
+for k=1:n
+    t0 = eventos(k);
+    if k<n, t1 = eventos(k+1); else, t1 = t(end); end
 
-% ---- 2) Manteniendo R_s a 40°C y modificando J_eq y b_eq ----
-i = 3;
-R_s = R_s_40;  J_eq = J_eq_min;  b_eq = b_eq_min;
-Condicion(i) = "J_{eq}, b_{eq} mínimos (R_s 40°C)";
-wn_val(i)   = sqrt( (R_s*b_eq + (3/2)*Pp^2*(lambda_m^2)) / (J_eq*L_q) );
-zeta_val(i) = (L_q*b_eq + R_s*J_eq) / (2*J_eq*L_q*wn_val(i));
+    idxw=(t>=t0)&(t<=t1); tt=t(idxw); yy=y(idxw);
 
-i = 4;
-R_s = R_s_40;  J_eq = J_eq_max;  b_eq = b_eq_max;
-Condicion(i) = "J_{eq}, b_{eq} máximos (R_s 40°C)";
-wn_val(i)   = sqrt( (R_s*b_eq + (3/2)*Pp^2*(lambda_m^2)) / (J_eq*L_q) );
-zeta_val(i) = (L_q*b_eq + R_s*J_eq) / (2*J_eq*L_q*wn_val(i));
+    y0 = mean(y((t>=(t0-dt_pre))&(t<t0)));
+    yf = mean(y((t>=(t1-dt_fin))&(t<=t1))); Yf(k)=yf;
 
-% ---- 3) Manteniendo R_s a 115°C y modificando J_eq y b_eq ----
-i = 5;
-R_s = R_s_115; J_eq = J_eq_min;  b_eq = b_eq_min;
-Condicion(i) = "J_{eq}, b_{eq} mínimos (R_s 115°C)";
-wn_val(i)   = sqrt( (R_s*b_eq + (3/2)*Pp^2*(lambda_m^2)) / (J_eq*L_q) );
-zeta_val(i) = (L_q*b_eq + R_s*J_eq) / (2*J_eq*L_q*wn_val(i));
+    Dy = yf-y0; if abs(Dy)<1e-9, continue, end
 
-i = 6;
-R_s = R_s_115; J_eq = J_eq_max;  b_eq = b_eq_max;
-Condicion(i) = "J_{eq}, b_{eq} máximos (R_s 115°C)";
-wn_val(i)   = sqrt( (R_s*b_eq + (3/2)*Pp^2*(lambda_m^2)) / (J_eq*L_q) );
-zeta_val(i) = (L_q*b_eq + R_s*J_eq) / (2*J_eq*L_q*wn_val(i));
+    yn=(yy-y0)/Dy;
+    i10=find(yn>=rise_low,1,'first'); i90=find(yn>=rise_high,1,'first');
+    if ~isempty(i10)&&~isempty(i90), Rise_ms(k)=(tt(i90)-tt(i10))*1000; end
 
-% === Tabla final ===
-Cuadro3 = table(Condicion, wn_val, zeta_val, 'VariableNames', {'Condicion','wn_rad_s','zeta'});
-disp(Cuadro3);
+    band=settle_pct*abs(Dy); err=abs(yy-yf);
+    for i=1:length(tt)
+        if all(err(i:end)<=band), Settle_ms(k)=(tt(i)-t0)*1000; break, end
+    end
 
-% Export a Excel
-writetable(Cuadro3,'Cuadro3_wn_zeta.xlsx');
+    if Dy>0, OS_pct(k)=max(0,(max(yy)-yf)/abs(Dy))*100;
+    else,    OS_pct(k)=max(0,(yf-min(yy))/abs(Dy))*100; end
+end
 
-% Impresión con 4 decimales
-fprintf('\n%-45s | %12s | %10s\n','Condición','wn [rad/s]','zeta');
-fprintf('%s\n', repmat('-',1,75));
-for i = 1:height(Cuadro3)
-    fprintf('%-45s | %12.4f | %10.4f\n', Cuadro3.Condicion(i), Cuadro3.wn_rad_s(i), Cuadro3.zeta(i));
+T = table(eventos(:), Rise_ms, Settle_ms, OS_pct, Yf);
 end
