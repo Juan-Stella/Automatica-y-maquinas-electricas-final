@@ -22,7 +22,7 @@ title('Curva torque vs velocidad (NL)')
 xline(0,'k'); yline(0,'k');
 
 % --------- TIEMPOS QUE QUERÉS MARCAR ----------
-tiempos_marca = [0 0.1 0.3 0.5 0.7 0.9 1.1 1.3 1.5 1.7 1.9];
+tiempos_marca = [0 0.1001 0.3 0.5 0.7 0.9 1.1 1.3 1.5 1.7 1.9];
 
 % Arrays para guardar valores
 omega_vals = zeros(length(tiempos_marca),1);

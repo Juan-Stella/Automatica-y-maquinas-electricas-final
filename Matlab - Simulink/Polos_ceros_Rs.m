@@ -3,7 +3,7 @@ clc
 T_s_ref = 20;
 T_s_interval = 40:10:115;
 n = numel(T_s_interval);
-
+p1 = zeros(1,n);
 p2 = zeros(1,n);
 p3 = zeros(1,n);
 ceros = zeros(1,n);
@@ -24,6 +24,7 @@ wn = abs(p2);
 zeta = -real(p2)./wn;         
 
 figure
+plot(real(p1), imag(p1), 'mx', 'MarkerSize', 8, 'LineWidth', 1.5); hold on
 plot(real(p2), imag(p2), 'rx', 'MarkerSize', 8, 'LineWidth', 1.5); hold on
 plot(real(p3), imag(p3), 'bx', 'MarkerSize', 8, 'LineWidth', 1.5)
 plot(real(ceros), imag(ceros), 'ko', 'MarkerSize', 8, 'LineWidth', 1.5)
@@ -64,7 +65,7 @@ grid on
 xlabel('Parte Real')
 ylabel('Parte Imaginaria')
 title('Variación de Polos y Ceros con T_s')
-legend('Polo s_2','Polo s_3','Cero','Location','best')
+legend('Polo s_1','Polo s_2','Polo s_3','Cero','Location','best')
 
 axis equal
 
