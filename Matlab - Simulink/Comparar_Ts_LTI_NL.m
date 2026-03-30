@@ -1,6 +1,6 @@
 clc
-Ts_NL_saved;
-Ts_LTI_saved = out.Ts_LTI;
+Ts_NL_saved = out.Ts_NL_saved;
+Ts_LTI_saved = out.Ts_LTI_saved;
 % --- Definir intervalo común ---
 t0 = max(Ts_NL_saved.Time(1), Ts_LTI_saved.Time(1));
 tf = min(Ts_NL_saved.Time(end), Ts_LTI_saved.Time(end));

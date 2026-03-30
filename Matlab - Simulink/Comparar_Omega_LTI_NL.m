@@ -1,6 +1,6 @@
 clc
-omega_NL_saved;
-omega_LTI_saved;
+omega_NL_saved = out.omega_NL_saved ;
+omega_LTI_saved = out.omega_LTI_saved;
 % --- Definir intervalo común ---
 t0 = max(omega_NL_saved.Time(1), omega_LTI_saved.Time(1));
 tf = min(omega_NL_saved.Time(end), omega_LTI_saved.Time(end));
