@@ -1,6 +1,6 @@
 clc
 
-NL_saved = out.NL_saved;
+NL_saved = out.Theta_NL;
 LTI = out.LTI;
 
 % --- Definir intervalo común ---
